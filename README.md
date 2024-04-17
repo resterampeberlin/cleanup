@@ -6,7 +6,7 @@
               
 # Purpose
 
-This script clean files produced by Apple iCLoud synchronisation. Those have usually the name `file 2`, `.file 2`, or `file 2.icloud`. The original filenames are "`file` or `.file`.
+This script deletes files produced by Apple iCLoud synchronisation. Those have usually the name `file 2`, `.file 2`, or `file 2.icloud`. The original filenames are "`file` or `.file`.
 
 The script find those files, checks if a original file is present in the same directory and deletes or simply shows the filenames. 
 The script searches in a given subdirectory and all its subfolders.
@@ -31,8 +31,13 @@ The default is to aks before deleting.
 
 ## Don´t show valid file (--no-valid)
 
-You may have valid files named `file 2`. Usually the script show those when there is **no** `file` in the same directory. Use `--no-valid` to suppress this message. 
-The default is to show valid files also.
+You may have valid files named `file 2`. Usually the script shows those when there is **no** `file` in the same directory. Use `--no-valid` to suppress this message. 
+The default is to show valid files.
+
+## Only valid file (--only-valid)
+
+Use `--only-valid` to show only valid files. 
+The default is to show duplicate files.
 
 ## Pathname
 

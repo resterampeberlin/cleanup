@@ -1,4 +1,4 @@
-#! /opt/homebrew/bin/python3
+#! /usr/bin/python3
 
 import sys
 import os
@@ -14,52 +14,58 @@ duplicates = 0
 noDuplicates = 0
 deleted = 0
 
-# matches all valid filenames
-pattern = r"([\(\)\/\.\+\$\-\w\W]+)"
+# search pattern
+pattern = re.compile("^.*\\/(.*)( [0-9]+)(\\..*)?$", re.IGNORECASE)
 
-
-def find(filePattern, namePattern):
+# process one file, check if duplicate exists
+def processFile(currentFile):
     global duplicates
     global noDuplicates
     global deleted
+    global pattern
 
-    for duplicate in glob.glob(join(sourcePath, filePattern), recursive=True):
-        currentDir = os.path.dirname(duplicate)
+    match = pattern.match(currentFile)
 
-        # do not do anything if this file is present in the directory
-        if not os.path.isfile(join(currentDir, ".nocleanup")):
-            p = re.compile(namePattern, re.IGNORECASE)
-            match = p.match(duplicate)
+    if match:
+        if match.group(3) != None:
+            original = join(os.path.dirname(currentFile),match.group(1) + match.group(3))
+        else:
+            original = join(os.path.dirname(currentFile),match.group(1))
 
-            if match:
-                if len(match.groups()) == 2:
-                    original = match.group(1) + "." + match.group(2)
-                else:
-                    original = match.group(1)
+        if os.path.isfile(original):
+            duplicates += 1
 
-                if os.path.isfile(original):
-                    duplicates += 1
-
-                    if args.dry_run:
-                        print("found " + colored(duplicate, "red") + " = " + original)
-                    else:
-                        if args.force or click.confirm(
-                            "Delete " + colored(duplicate, "red") + " = " + original,
-                            default=True,
-                        ):
-                            deleted += 1
-
-                            os.remove(duplicate)
-                else:
-                    noDuplicates += 1
-
-                    if not args.no_valid:
-                        print("valid file" + colored(duplicate, "green"))
+            if args.dry_run:
+                if not args.only_valid:
+                    print("found " + colored(currentFile, "red") + " = " + original)
             else:
-                # that means, that match could not find the required pattern
-                # that could be a very weird filename for example with strange characters
-                print("no match " + colored(duplicate, "yellow"))
+                if args.force or click.confirm(
+                    "Delete " + colored(currentFile, "red") + " = " + original,
+                    default=True,
+                ):
+                    deleted += 1
 
+                    os.remove(currentFile)
+        else:
+            noDuplicates += 1
+
+            if not args.no_valid:
+                print("valid file " + colored(currentFile, "green"))
+
+
+# process one directory
+def processPath(currentPath):
+     # do not do anything if this file is present in the directory
+    if os.path.isfile(join(path, ".nocleanup")):  
+        print("Skipping " + colored(path, "green"))
+    else:
+        # iterate over all files
+        for file in glob.glob(join(currentPath,"*")):
+            processFile(file)
+
+        for file in glob.glob(join(currentPath,".*")):
+            processFile(file)
+        
 
 # Create the command line parser
 parser = argparse.ArgumentParser(
@@ -87,6 +93,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--only-valid",
+    default=False,
+    action="store_true",
+    help="don't show duplicates, show only valid files",
+)
+
+parser.add_argument(
     "path",
     default=".",
     type=str,
@@ -98,30 +111,27 @@ parser.add_argument(
 args = parser.parse_args()
 
 # use ** for recursion
-sourcePath = join(args.path, "**")
+sourcePath = join(args.path, "**/")
 
 print("Looking for duplicates in " + args.path)
 
-# find "duplicate 2.x"
-find("* 2.*", "^" + pattern + " 2\." + pattern + "$")
+# iterate over all directories
+for path in glob.glob(sourcePath, recursive=True):
+    try:
+        processPath(path)
+    except click.exceptions.Abort:
+        print ("Aborted")
+        break
 
-# find "duplicate 2"
-find("* 2", "^" + pattern + " 2$")
-
-# find ".duplicate 2.pdf"
-find(".* 2.*", "^" + pattern + " 2\." + pattern + "$")
-
-# find ".duplicate 2"
-find(".* 2", "^" + pattern + " 2$")
-
+# print statistics    
 print(
     "Found "
     + colored(str(noDuplicates), "green")
-    + " valid files, "
+    + " valid file(s), "
     + colored(str(duplicates), "red")
-    + " duplicates, deleted "
-    + str(deleted)
-    + " duplicates"
+    + " duplicate(s), deleted "
+    + colored(str(deleted), "red")
+    + " duplicate(s)"
 )
 
 exit(1)
