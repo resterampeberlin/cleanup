@@ -2,7 +2,7 @@
 
 import sys
 import os
-from os.path import join
+from os.path import join, basename, dirname, splitext, isfile
 import re
 from termcolor import colored
 import glob
@@ -15,7 +15,7 @@ noDuplicates = 0
 deleted = 0
 
 # search pattern
-pattern = re.compile("^.*\\/(.*)( [0-9]+)(\\..*)?$", re.IGNORECASE)
+pattern = re.compile("(.*)( [0-9]+)$", re.IGNORECASE)
 
 # process one file, check if duplicate exists
 def processFile(currentFile):
@@ -24,15 +24,18 @@ def processFile(currentFile):
     global deleted
     global pattern
 
-    match = pattern.match(currentFile)
+    # split current filename into pieces
+    duplicateExt = splitext(currentFile)[1]
+    duplicateName = basename(currentFile).removesuffix(duplicateExt)
+    duplicatePath = dirname(currentFile)
+    
+    # check if filename is matching something "file 2"
+    match = pattern.match(duplicateName)
 
-    if match:
-        if match.group(3) != None:
-            original = join(os.path.dirname(currentFile),match.group(1) + match.group(3))
-        else:
-            original = join(os.path.dirname(currentFile),match.group(1))
+    if isfile(currentFile) and match:
+        original = join(duplicatePath,match.group(1))+duplicateExt
 
-        if os.path.isfile(original):
+        if isfile(original):
             duplicates += 1
 
             if args.dry_run:
@@ -85,14 +88,15 @@ feature_parser.add_argument(
     "--force", default=False, action="store_true", help="don't ask before deleting"
 )
 
-parser.add_argument(
+# allow either --no-valid or --only-valid
+display_parser = parser.add_mutually_exclusive_group(required=False)
+display_parser.add_argument(
     "--no-valid",
     default=False,
     action="store_true",
     help="don't show valid files, show only duplicates",
 )
-
-parser.add_argument(
+display_parser.add_argument(
     "--only-valid",
     default=False,
     action="store_true",
