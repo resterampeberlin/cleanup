@@ -1,2 +1,6 @@
 # OS X files
 .DS_STORE
+
+# Python intermediate files
+__pycache__/
+*.py[cod]
